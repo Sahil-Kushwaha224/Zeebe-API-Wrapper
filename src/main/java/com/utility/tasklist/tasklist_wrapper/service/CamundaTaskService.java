@@ -3,12 +3,14 @@ package com.utility.tasklist.tasklist_wrapper.service;
 import com.utility.tasklist.tasklist_wrapper.config.UrlConfig;
 import com.utility.tasklist.tasklist_wrapper.dto.CorrelateMessageRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.StartProcessInstanceRequest;
-import com.utility.tasklist.tasklist_wrapper.dto.MigrateProcessInstanceRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.publicationMessageRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 public class CamundaTaskService {
@@ -51,6 +53,43 @@ public class CamundaTaskService {
             throw new RuntimeException("Error correlating message in Camunda", ex);
         }
     }
+
+    public Object publicationMessage(publicationMessageRequest request) {
+        try {
+            logger.info("Publishing message via Camunda API at {}", UrlConfig.ZEEBEE_MESSAGE_PUBLISH_BASE_URL);
+            // Default TTL to 0 if not provided to satisfy Camunda API's non-null expectation
+            if (request.getTimeToLive() == null) {
+                request.setTimeToLive(0L);
+            }
+            ResponseEntity<Object> response = webClient.post()
+                    .uri(UrlConfig.ZEEBEE_MESSAGE_PUBLISH_BASE_URL)
+                    .bodyValue(request)
+                    .retrieve()
+                    .toEntity(Object.class)
+                    .block();
+
+            if (response != null && response.getStatusCode().is2xxSuccessful()) {
+                logger.debug("Successfully published message: {}", request.getName());
+                return response.getBody();
+            } else {
+                String status = (response == null) ? "null response" : response.getStatusCode().toString();
+                Object body = (response == null) ? null : response.getBody();
+                logger.error("Failed to publish message: HTTP {} - {}", status, body);
+                throw new RuntimeException("Failed to publish message in Camunda.");
+            }
+        } catch (WebClientResponseException wex) {
+            String body = wex.getResponseBodyAsString();
+            logger.error("Camunda publish message API error: status={}, body={}", wex.getRawStatusCode(), body);
+            throw new RuntimeException("Camunda error (" + wex.getRawStatusCode() + "): " + body, wex);
+        } catch (Exception ex) {
+            logger.error("Exception while publishing message: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Error publishing message in Camunda", ex);
+        }
+    }
+
+
+
+
 
     /**
      * Start a process instance.
@@ -110,35 +149,7 @@ public class CamundaTaskService {
         }
     }
 
-    /**
-     * Migrate a process instance by key.
-     * POST http://localhost:8088/v2/process-instances/{processInstanceKey}/migration
-     */
-    public Object migrateProcessInstance(String processInstanceKey, MigrateProcessInstanceRequest migrationRequestBody) {
-        try {
-            String url = String.format(UrlConfig.ZEEBEE_PROCESS_MIGRATION_URL, processInstanceKey);
-            logger.info("Migrating process instance via Camunda API at {}", url);
-            ResponseEntity<Object> response = webClient.post()
-                    .uri(url)
-                    .bodyValue(migrationRequestBody)
-                    .retrieve()
-                    .toEntity(Object.class)
-                    .block();
 
-            if (response != null && response.getStatusCode().is2xxSuccessful()) {
-                logger.debug("Successfully migrated process instance: {}", processInstanceKey);
-                return response.getBody();
-            } else {
-                String status = (response == null) ? "null response" : response.getStatusCode().toString();
-                Object body = (response == null) ? null : response.getBody();
-                logger.error("Failed to migrate process: HTTP {} - {}", status, body);
-                throw new RuntimeException("Failed to migrate process instance in Camunda.");
-            }
-        } catch (Exception ex) {
-            logger.error("Exception while migrating process instance: {}", ex.getMessage(), ex);
-            throw new RuntimeException("Error migrating process instance in Camunda", ex);
-        }
-    }
 
     /**
      * Update all variables for a given element instance (or process instance) scope.
