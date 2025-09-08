@@ -1,0 +1,16 @@
+server:
+    port: 5174
+
+camunda:
+    taskapi: http://localhost:8082/v1/tasks/
+    camundaapi: http://localhost:8088/v2/user-tasks/
+    engineapi: http://localhost:8080/engine-rest/
+    identity:
+        token-url: http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect/token
+        client-id: camunda-app
+        client-secret: obZX3RYXbaR7zo6Vb6BU3sMeutkGw8So
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
