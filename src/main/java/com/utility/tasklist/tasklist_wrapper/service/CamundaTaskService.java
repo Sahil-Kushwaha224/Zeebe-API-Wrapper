@@ -3,7 +3,11 @@ package com.utility.tasklist.tasklist_wrapper.service;
 import com.utility.tasklist.tasklist_wrapper.config.UrlConfig;
 import com.utility.tasklist.tasklist_wrapper.dto.CorrelateMessageRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.StartProcessInstanceRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.UpdateProcessInstanceVariablesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.publicationMessageRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.SearchProcessInstancesRequest;
+
+import io.camunda.zeebe.client.ZeebeClient;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +22,11 @@ public class CamundaTaskService {
     private static final Logger logger = LoggerFactory.getLogger(CamundaTaskService.class);
 
     private final WebClient webClient;
+    private final ZeebeClient zeebeClient;
 
-    public CamundaTaskService(WebClient webClient) {
+    public CamundaTaskService(WebClient webClient, ZeebeClient zeebeClient) {
         this.webClient = webClient;
+        this.zeebeClient = zeebeClient;
     }
 
     /**
@@ -87,9 +93,24 @@ public class CamundaTaskService {
         }
     }
 
-
-
-
+    /**
+     * Update process instance variables using Zeebe client (self-managed gateway).
+     * If local=true, variables are set on the element scope; otherwise process instance scope.
+     */
+    public void updateProcessInstanceVariables(long processInstanceKey, UpdateProcessInstanceVariablesRequest request) {
+        try {
+            logger.info("Setting variables via Zeebe client for processInstanceKey={} local={}", processInstanceKey, request.getLocal());
+            zeebeClient
+                .newSetVariablesCommand(processInstanceKey)
+                .variables(request.getVariables())
+                .local(Boolean.TRUE.equals(request.getLocal()))
+                .send()
+                .join();
+        } catch (Exception ex) {
+            logger.error("Exception while setting process instance variables: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Error setting process instance variables via Zeebe client", ex);
+        }
+    }
 
     /**
      * Start a process instance.
@@ -176,4 +197,125 @@ public class CamundaTaskService {
             throw new RuntimeException("Error updating element instance variables in Camunda", ex);
         }
     }
+
+    /**
+     * Search process instances with filter, size, searchAfter and sort.
+     * POST http://localhost:8081/v1/process-instances/search
+     */
+    public Object searchProcessInstances(SearchProcessInstancesRequest request) {
+        try {
+            logger.info("Searching process instances via API at {}", UrlConfig.ZEEBEE_PROCESS_SEARCH_URL);
+            ResponseEntity<Object> response = webClient.post()
+                    .uri(UrlConfig.ZEEBEE_PROCESS_SEARCH_URL)
+                    .bodyValue(request)
+                    .retrieve()
+                    .toEntity(Object.class)
+                    .block();
+
+            if (response != null && response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody();
+            } else {
+                String status = (response == null) ? "null response" : response.getStatusCode().toString();
+                Object body = (response == null) ? null : response.getBody();
+                logger.error("Failed to search process instances: HTTP {} - {}", status, body);
+                throw new RuntimeException("Failed to search process instances.");
+            }
+        } catch (Exception ex) {
+            logger.error("Exception while searching process instances: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Error searching process instances", ex);
+        }
+    }
+
+    /**
+     * Get process instance by key.
+     * GET http://localhost:8080/v1/process-instances/{key}
+     */
+    public Object getProcessInstanceByKey(long key) {
+        try {
+            String url = String.format(UrlConfig.ZEEBEE_PROCESS_BY_KEY_URL, key);
+            logger.info("Fetching process instance by key via API at {}", url);
+            ResponseEntity<Object> response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .toEntity(Object.class)
+                    .block();
+
+            if (response != null && response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody();
+            } else {
+                String status = (response == null) ? "null response" : response.getStatusCode().toString();
+                Object body = (response == null) ? null : response.getBody();
+                logger.error("Failed to get process instance by key: HTTP {} - {}", status, body);
+                throw new RuntimeException("Failed to get process instance by key.");
+            }
+        } catch (Exception ex) {
+            logger.error("Exception while getting process instance by key: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Error getting process instance by key", ex);
+        }
+    }
+
+     /**
+     * Get process-definitions by key.
+     * GET http://localhost:8080/v1/process-definitions/{key}
+     */
+    public Object getprocessDefinitionsBykey(long key) {
+        try {
+            String url = String.format(UrlConfig.ZEEBEE_PROCESS_DEFINITION_BY_KEY_URL, key);
+            logger.info("Fetching process instance by key via API at {}", url);
+            ResponseEntity<Object> response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .toEntity(Object.class)
+                    .block();
+
+            if (response != null && response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody();
+            } else {
+                String status = (response == null) ? "null response" : response.getStatusCode().toString();
+                Object body = (response == null) ? null : response.getBody();
+                logger.error("Failed to get process definition by key: HTTP {} - {}", status, body);
+                throw new RuntimeException("Failed to get process definition by key.");
+            }
+        } catch (Exception ex) {
+            logger.error("Exception while getting process definition by key: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Error getting process definition by key", ex);
+        }
+    }
+
+     /**
+     * Get process-definitions as XML.
+     * GET http://localhost:8080/v1/process-definitions/{key}/xml
+     */
+    /**
+ * Get process-definitions as XML.
+ * GET http://localhost:8080/v1/process-definitions/{key}/xml
+ */
+public String getProcessDefinitionAsXml(long key) {   // ✅ return String instead of Object
+    try {
+        String url = String.format(UrlConfig.ZEEBEE_PROCESS_DEFINITION_AS_XML_URL, key);
+        logger.info("Fetching process definition by key via API at {}", url);
+
+        ResponseEntity<String> response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .toEntity(String.class)   // ✅ expect String instead of Object
+                .block();
+
+        if (response != null && response.getStatusCode().is2xxSuccessful()) {
+            return response.getBody();
+        } else {
+            String status = (response == null) ? "null response" : response.getStatusCode().toString();
+            String body = (response == null) ? null : response.getBody();
+            logger.error("Failed to get process definition by key: HTTP {} - {}", status, body);
+            throw new RuntimeException("Failed to get process definition by key.");
+        }
+    } catch (Exception ex) {
+        logger.error("Exception while getting process definition by key: {}", ex.getMessage(), ex);
+        throw new RuntimeException("Error getting process definition by key", ex);
+    }
+}
+
+
+
+
 }

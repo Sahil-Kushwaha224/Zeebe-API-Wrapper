@@ -53,6 +53,13 @@
 			<artifactId>spring-webflux</artifactId>
 			<version>6.2.8</version>
 		</dependency>
+
+		<!-- Camunda Zeebe Java Client for direct gateway access -->
+		<dependency>
+			<groupId>io.camunda</groupId>
+			<artifactId>zeebe-client-java</artifactId>
+			<version>8.6.3</version>
+		</dependency>
 	</dependencies>
 
 	<build>

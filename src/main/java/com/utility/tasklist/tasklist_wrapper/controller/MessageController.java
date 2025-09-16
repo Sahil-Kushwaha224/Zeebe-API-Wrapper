@@ -2,7 +2,9 @@ package com.utility.tasklist.tasklist_wrapper.controller;
 
 import com.utility.tasklist.tasklist_wrapper.dto.CorrelateMessageRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.StartProcessInstanceRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.UpdateProcessInstanceVariablesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.publicationMessageRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.SearchProcessInstancesRequest;
 import com.utility.tasklist.tasklist_wrapper.service.CamundaTaskService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -98,9 +100,80 @@ public class MessageController {
             @RequestBody com.utility.tasklist.tasklist_wrapper.dto.UpdateElementInstanceVariablesRequest request) {
         try {
             camundaTaskService.updateElementInstanceVariables(elementInstanceKey, request);
-            return ResponseEntity.noContent().build(); // 204
+            return ResponseEntity.ok("Updated successfully"); // 204
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Failed to update variables: " + ex.getMessage());
         }
     }
+
+    /**
+     * Update process instance variables via Zeebe client directly.
+     * PUT /process-instances/{processInstanceKey}/variables
+     */
+    @PutMapping("/process-instances/{processInstanceKey}/variables")
+    public ResponseEntity<?> updateProcessInstanceVariables(
+            @PathVariable long processInstanceKey,
+            @RequestBody UpdateProcessInstanceVariablesRequest request) {
+        try {
+            camundaTaskService.updateProcessInstanceVariables(processInstanceKey, request);
+            return ResponseEntity.noContent().build(); // 204
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Failed to update process instance variables: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Search process instances.
+     * POST /v1/variable/search (proxy)
+     */
+    @PostMapping("/v1/variables/search")
+    public ResponseEntity<?> searchProcessInstances(@RequestBody SearchProcessInstancesRequest request) {
+        try {
+            Object result = camundaTaskService.searchProcessInstances(request);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Failed to search process instances: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Get process instance by key.
+     * GET /v1/process-instances/{key} (proxy)
+     */
+    @GetMapping("/process-instances/{key}")
+    public ResponseEntity<?> getProcessInstanceByKey(@PathVariable long key) {
+        try {
+            Object result = camundaTaskService.getProcessInstanceByKey(key);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Failed to get process instance: " + ex.getMessage());
+        }
+    }
+
+
+
+     /**
+    *  Get process definition by key
+     * GET /v1/process-definitions//{key} (proxy)
+     */
+    @GetMapping("/process-definitions/{key}")
+    public ResponseEntity<?> getProcessdefinitionByKey(@PathVariable long key) {
+        try {
+            Object result = camundaTaskService.getprocessDefinitionsBykey(key);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Failed to get process instance: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/process-definitions/{key}/xml")
+    public ResponseEntity<String> getProcessdefinitionAsXML(@PathVariable long key) {
+    try {
+        String result = camundaTaskService.getProcessDefinitionAsXml(key); // ✅ use String
+        return ResponseEntity.ok(result);
+    } catch (Exception ex) {
+        return ResponseEntity.status(500).body("Failed to get process definition: " + ex.getMessage());
+    }
+}
+
 }

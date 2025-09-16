@@ -10,6 +10,12 @@ camunda:
         client-id: camunda-app
         client-secret: obZX3RYXbaR7zo6Vb6BU3sMeutkGw8So
 
+# Zeebe gateway (self-managed)
+zeebe:
+  gateway:
+    address: 127.0.0.1:26500
+    plaintext: true
+
 logging:
   level:
     org.springframework.web: DEBUG
