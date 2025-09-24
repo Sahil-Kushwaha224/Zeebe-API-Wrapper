@@ -14,7 +14,9 @@ public class UrlConfig {
     public static final String ZEEBEE_PROCESS_BY_KEY_URL = "http://localhost:8081/v1/process-instances/%s";
 
     public static final String ZEEBEE_PROCESS_DEFINITION_BY_KEY_URL = "http://localhost:8081//v1/process-definitions/%s";
-        public static final String ZEEBEE_PROCESS_DEFINITION_AS_XML_URL = "http://localhost:8081//v1/process-definitions/%s/xml";
+    public static final String ZEEBEE_PROCESS_DEFINITION_AS_XML_URL = "http://localhost:8081//v1/process-definitions/%s/xml";
+    public static final String ZEEBEE_PROCESS_PROCESS_INSTANCE_SEARCH_URL = "http://localhost:8081/v1/process-instances/search";
 
+    public static final String ZEEBEE_EVALUATE = "http://localhost:8088/v2/decision-definitions/evaluation";
 
 }

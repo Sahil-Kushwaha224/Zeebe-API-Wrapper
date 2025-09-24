@@ -1,16 +1,23 @@
 package com.utility.tasklist.tasklist_wrapper.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.utility.tasklist.tasklist_wrapper.config.UrlConfig;
 import com.utility.tasklist.tasklist_wrapper.dto.CorrelateMessageRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.EvaluateDecisionRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.ProcessInstancesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.StartProcessInstanceRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.UpdateProcessInstanceVariablesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.publicationMessageRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.SearchProcessInstancesRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 
 import io.camunda.zeebe.client.ZeebeClient;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -28,6 +35,9 @@ public class CamundaTaskService {
         this.webClient = webClient;
         this.zeebeClient = zeebeClient;
     }
+    
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * Correlate a message to a process instance using Camunda's message API.
@@ -200,14 +210,18 @@ public class CamundaTaskService {
 
     /**
      * Search process instances with filter, size, searchAfter and sort.
-     * POST http://localhost:8081/v1/process-instances/search
+     * POST http://localhost:8081/v1/variable/search
      */
-    public Object searchProcessInstances(SearchProcessInstancesRequest request) {
+    public Object searchProcessInstancesVariable(String requestBody) {
         try {
-            logger.info("Searching process instances via API at {}", UrlConfig.ZEEBEE_PROCESS_SEARCH_URL);
+            // Logging the raw JSON request
+            System.out.println("Request JSON = " + requestBody);
+            System.out.println("Searching process instances via API at " + UrlConfig.ZEEBEE_PROCESS_SEARCH_URL);
+
             ResponseEntity<Object> response = webClient.post()
                     .uri(UrlConfig.ZEEBEE_PROCESS_SEARCH_URL)
-                    .bodyValue(request)
+                    .header("Content-Type", "application/json")
+                    .bodyValue(requestBody)
                     .retrieve()
                     .toEntity(Object.class)
                     .block();
@@ -217,14 +231,52 @@ public class CamundaTaskService {
             } else {
                 String status = (response == null) ? "null response" : response.getStatusCode().toString();
                 Object body = (response == null) ? null : response.getBody();
-                logger.error("Failed to search process instances: HTTP {} - {}", status, body);
+                System.err.println("Failed to search process instances: HTTP " + status + " - " + body);
                 throw new RuntimeException("Failed to search process instances.");
             }
         } catch (Exception ex) {
-            logger.error("Exception while searching process instances: {}", ex.getMessage(), ex);
+            System.err.println("Exception while searching process instances: " + ex.getMessage());
             throw new RuntimeException("Error searching process instances", ex);
         }
     }
+
+    /**
+     * Search process instances with filter, size, searchAfter and sort.
+     * POST http://localhost:8081/v1/process-instance/search
+     */
+    public Object searchProcessInstances(String jsonRequest) {
+    try {
+        // Log JSON being sent to Camunda
+        System.out.println("Request sent to Camunda API:\n" + jsonRequest);
+
+        // Send JSON string directly; WebClient won't try to map it to DTO
+        ResponseEntity<Object> response = webClient.post()
+                .uri("http://localhost:8081/v1/process-instances/search")
+                .header("Content-Type", "application/json")
+                .bodyValue(jsonRequest)
+                .retrieve()
+                .toEntity(Object.class)
+                .block();
+
+        if (response != null && response.getStatusCode().is2xxSuccessful()) {
+            System.out.println("Response from Camunda API: " + response.getBody());
+            return response.getBody();
+        } else {
+            String status = (response == null) ? "null response" : response.getStatusCode().toString();
+            Object body = (response == null) ? null : response.getBody();
+            throw new RuntimeException("Failed to search process instances: HTTP " + status + " - " + body);
+        }
+    } catch (Exception ex) {
+        throw new RuntimeException("Error searching process instances", ex);
+    }
+}
+
+
+
+
+
+
+
 
     /**
      * Get process instance by key.
@@ -290,7 +342,7 @@ public class CamundaTaskService {
  * Get process-definitions as XML.
  * GET http://localhost:8080/v1/process-definitions/{key}/xml
  */
-public String getProcessDefinitionAsXml(long key) {   // ✅ return String instead of Object
+public String getProcessDefinitionAsXml(long key) {   
     try {
         String url = String.format(UrlConfig.ZEEBEE_PROCESS_DEFINITION_AS_XML_URL, key);
         logger.info("Fetching process definition by key via API at {}", url);
@@ -298,7 +350,7 @@ public String getProcessDefinitionAsXml(long key) {   // ✅ return String inste
         ResponseEntity<String> response = webClient.get()
                 .uri(url)
                 .retrieve()
-                .toEntity(String.class)   // ✅ expect String instead of Object
+                .toEntity(String.class)   
                 .block();
 
         if (response != null && response.getStatusCode().is2xxSuccessful()) {
@@ -314,6 +366,33 @@ public String getProcessDefinitionAsXml(long key) {   // ✅ return String inste
         throw new RuntimeException("Error getting process definition by key", ex);
     }
 }
+
+
+public Object evaluateDecision(EvaluateDecisionRequest request) {
+    try {
+        logger.info("Evaluating decision via API at {}", UrlConfig.ZEEBEE_EVALUATE);
+
+        ResponseEntity<Object> response = webClient.post()
+                .uri(UrlConfig.ZEEBEE_EVALUATE) 
+                .bodyValue(request)
+                .retrieve()
+                .toEntity(Object.class)
+                .block();
+
+        if (response != null && response.getStatusCode().is2xxSuccessful()) {
+            return response.getBody();
+        } else {
+            String status = (response == null) ? "null response" : response.getStatusCode().toString();
+            Object body = (response == null) ? null : response.getBody();
+            logger.error("Failed to evaluate decision: HTTP {} - {}", status, body);
+            throw new RuntimeException("Failed to evaluate decision.");
+        }
+    } catch (Exception ex) {
+        logger.error("Exception while evaluating decision: {}", ex.getMessage(), ex);
+        throw new RuntimeException("Error evaluating decision", ex);
+    }
+}
+
 
 
 

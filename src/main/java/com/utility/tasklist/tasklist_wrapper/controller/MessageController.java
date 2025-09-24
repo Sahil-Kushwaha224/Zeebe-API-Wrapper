@@ -1,6 +1,8 @@
 package com.utility.tasklist.tasklist_wrapper.controller;
 
 import com.utility.tasklist.tasklist_wrapper.dto.CorrelateMessageRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.EvaluateDecisionRequest;
+import com.utility.tasklist.tasklist_wrapper.dto.ProcessInstancesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.StartProcessInstanceRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.UpdateProcessInstanceVariablesRequest;
 import com.utility.tasklist.tasklist_wrapper.dto.publicationMessageRequest;
@@ -126,15 +128,42 @@ public class MessageController {
      * Search process instances.
      * POST /v1/variable/search (proxy)
      */
-    @PostMapping("/v1/variables/search")
-    public ResponseEntity<?> searchProcessInstances(@RequestBody SearchProcessInstancesRequest request) {
+   @PostMapping("/v1/variables/search")
+    public ResponseEntity<?> searchProcessInstancesVariable(@RequestBody String requestBody) {
         try {
-            Object result = camundaTaskService.searchProcessInstances(request);
+            // requestBody ko service me pass kar rahe hain directly
+            Object result = camundaTaskService.searchProcessInstancesVariable(requestBody);
             return ResponseEntity.ok(result);
         } catch (Exception ex) {
             return ResponseEntity.status(500).body("Failed to search process instances: " + ex.getMessage());
         }
     }
+    
+
+
+
+
+
+
+    /**
+     * Search process instances.
+     * POST /v1/variable/search (proxy)
+     */
+    @PostMapping("/v1/process-instances/search")
+public ResponseEntity<?> searchProcessInstances(@RequestBody String requestJson) {
+    try {
+        System.out.println("Received request from Postman: " + requestJson);
+        Object result = camundaTaskService.searchProcessInstances(requestJson);
+        return ResponseEntity.ok(result);
+    } catch (Exception ex) {
+        return ResponseEntity.status(500)
+                             .body("Failed to search process instances: " + ex.getMessage());
+    }
+}
+
+
+
+
 
     /**
      * Get process instance by key.
@@ -169,11 +198,23 @@ public class MessageController {
     @GetMapping("/process-definitions/{key}/xml")
     public ResponseEntity<String> getProcessdefinitionAsXML(@PathVariable long key) {
     try {
-        String result = camundaTaskService.getProcessDefinitionAsXml(key); // ✅ use String
+        String result = camundaTaskService.getProcessDefinitionAsXml(key); 
         return ResponseEntity.ok(result);
     } catch (Exception ex) {
         return ResponseEntity.status(500).body("Failed to get process definition: " + ex.getMessage());
     }
 }
+    @PostMapping("/v2/decision-definitions/evaluation")
+    public ResponseEntity<?> evaluateDecision(@RequestBody EvaluateDecisionRequest request) {
+        try {
+            Object result = camundaTaskService.evaluateDecision(request);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body("Failed to evaluate decision: " + ex.getMessage());
+        }
+    }
+
+
+    
 
 }
